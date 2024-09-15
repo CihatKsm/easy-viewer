@@ -1,6 +1,6 @@
 {
   "name": "easy-viewer",
-  "version": "0.0.1",
+  "version": "0.0.1-beta",
   "description": "Easy Viewer is a simple and easy to use viewer for your projects.",
   "main": "server.js",
   "scripts": {

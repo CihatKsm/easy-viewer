@@ -1,17 +1,24 @@
 const express = require('express');
-const { Rooter, Config, Schemes } = require('../server');
+const { UseRender, SchemeManager, Config } = require('../server');
 const app = express()
 const port = 3000;
 
-const html_dir = __dirname + '/html';
-Config.set.dir('views', html_dir);
+const schemes = new SchemeManager();
+schemes.load(__dirname + '/schemes');
 
-const schemes_dir = __dirname + '/schemes';
-Schemes.set('app', schemes_dir + '/app.html');
+const config = new Config();
+config.set('views', __dirname + '/html');
+
+app.use((req) => { req.default_scheme = 'app'; req.next(); });
+app.use(UseRender);
 
 app.get('/', (req, res) => {
-    const rooter = new Rooter(req, res);
-    rooter.render('index', {}, Schemes.get('app'));
+    res.renderer('index', { title: 'Express' });
+})
+
+
+app.post('/', (req, res) => {
+    console.log('Posted');
 })
 
 app.listen(port, () => {

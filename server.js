@@ -28,8 +28,11 @@ function UseRender(request, response, next) {
         return;
     }
 
+    const _scheme = request?.default_scheme || null;
+    const _data = request?.default_data || {};
+
     const rooter = new Rooter(request);
-    response.renderer = (file_name, data, scheme = request.default_scheme) => rooter.render(file_name, data, scheme);
+    response.renderer = (file_name, data, scheme = _scheme) => rooter.render(file_name, { ..._data, ...(data || {}) }, scheme);
     next();
 }
 
@@ -76,7 +79,7 @@ class Rooter {
         if (this.errors.length > 0) {
             console.error('▲ easy-viewer: '.cyan + 'Page not rendered because of errors, please first fix the errors.'.yellow);
             this.errors.forEach(error => console.error('▲ easy-viewer: '.cyan + (error.stack).red));
-            return this.request.res.send('An error occurred.');
+            return this.request.res.status(500).json({ status: 500, message: 'Internal Server Error, please check the logs.' });
         }
         return this.request.res.send(html);
     }
@@ -89,6 +92,7 @@ class Rooter {
         if (!data || typeof data !== 'object') data = {};
 
         let html = scheme?.html;
+        if (!html || html.length === 0) return this.request.res.status(404).json({ status: 404, message: 'Html scheme not found.' });
 
         data.file_name = file_name;
 
@@ -140,7 +144,6 @@ class Rooter {
         Object.keys(data).forEach(key => global[key] = data[key]);
 
         codes = codes.map(item => {
-
             let output = null;
             try {
                 output = eval(item.code);

@@ -102,7 +102,7 @@ class Rooter {
     async json(data = {}) {
         const jsonData = JSON.stringify(data);
         this.request.res.setHeader('Content-Type', 'application/json');
-        return this.request.res.send(jsonData);
+        return this.request.res.json(jsonData);
     }
 
     async file(location) {

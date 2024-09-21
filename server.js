@@ -9,7 +9,31 @@ require('colors');
  * @property {string} html The HTML content of the scheme.
  */
 const schemeStore = new Map();
+
+/**
+ * @typedef {Object} ConfigStore
+ * @property {string} key The key of the config.
+ * @property {string} value The value of the config.
+ */
 const configStore = new Map();
+
+/**
+ * ConfigKeys: The keys for the configuration.
+ */
+const ConfigKeys = {
+    /**
+     * VIEWS: The views directory path.
+     */
+    VIEWS: 'views',
+    /**
+     * DEFAULT_SCHEME: The default scheme for rendering HTML files.
+     */
+    DEFAULT_SCHEME: 'default_scheme',
+    /**
+     * IGNORE_ERRORS: Ignore errors while rendering HTML files.
+     */
+    IGNORE_ERRORS: 'ignore_errors'
+}
 
 /**
  * UseRender: Middleware for Express.js to render HTML files.
@@ -17,10 +41,13 @@ const configStore = new Map();
  * @param {import('express').Request} request This is the request object.
  * @param {import('express').Response} response This is the response object.
  * @param {import('express').NextFunction} next This is the next function.
- * @param {Function} response.render This is the render function.
  */
 function UseRender(request, response, next) {
-    if (!request || !response || !next) throw new Error('Error: Request, Response, and Next are required.');
+    if (!request || !response || !next) {
+        const error = new Error('Error: Request, Response or Next is not defined.');
+        console.error('▲ easy-viewer: '.cyan + error.message.red);
+        return process.exit(1);
+    }
 
     const method = request.method;
     if (method !== 'GET') {
@@ -28,21 +55,27 @@ function UseRender(request, response, next) {
         return;
     }
 
-    const _scheme = request?.default_scheme || null;
-    const _data = request?.default_data || {};
+    const _scheme = configStore.get(ConfigKeys.DEFAULT_SCHEME)?.value;
+    const _data = request?.data || {};
 
     const rooter = new Rooter(request);
-    response.renderer = (file_name, data, scheme = _scheme) => rooter.render(file_name, { ..._data, ...(data || {}) }, scheme);
+
+    response.renderer = (file_name, data, scheme = _scheme) => rooter.render(file_name, { ..._data, ...(data || {}) }, scheme)
     next();
 }
 
 class Config {
     set(key, value) {
-        configStore.set(key, value);
+        if (!Object.values(ConfigKeys).includes(key)) {
+            console.error('▲ easy-viewer: '.cyan + `Invalid key: ${key}`.red);
+        } else {
+            if (configStore.has(key)) configStore.delete(key);
+            configStore.set(key, { key, value });
+        }
     }
 
     get(key) {
-        return configStore.get(key);
+        return (configStore.get(key) || {})?.value;
     }
 }
 
@@ -76,10 +109,10 @@ class Rooter {
     async render(file_name, data = {}, scheme) {
         this.request.res.setHeader('Content-Type', 'text/html');
         let html = await this.getHtml(file_name, data, scheme);
-        if (this.errors.length > 0) {
+        if (this.errors.length > 0 && !configStore.get(ConfigKeys.IGNORE_ERRORS)?.value) {
             console.error('▲ easy-viewer: '.cyan + 'Page not rendered because of errors, please first fix the errors.'.yellow);
             this.errors.forEach(error => console.error('▲ easy-viewer: '.cyan + (error.stack).red));
-            return this.request.res.status(500).json({ status: 500, message: 'Internal Server Error, please check the logs.' });
+            return this.json({ status: 500, message: 'Internal Server Error.' });
         }
         return this.request.res.send(html);
     }
@@ -92,7 +125,9 @@ class Rooter {
         if (!data || typeof data !== 'object') data = {};
 
         let html = scheme?.html;
-        if (!html || html.length === 0) return this.request.res.status(404).json({ status: 404, message: 'Html scheme not found.' });
+        if (!html || html.length === 0) {
+            return this.json({ status: 404, message: 'Html scheme not found.' });
+        }
 
         data.file_name = file_name;
 
@@ -117,7 +152,8 @@ class Rooter {
 
         data.include = (file) => {
             let includingHtml;
-            const dir = join(config.get('views'), `${file}.html`);
+            const views_dir = config.get(ConfigKeys.VIEWS);
+            const dir = join(views_dir, `${file}.html`);
             try { includingHtml = readFileSync(dir, 'utf8'); }
             catch (error) { return null; }
             return this.run(data, includingHtml);
@@ -146,7 +182,7 @@ class Rooter {
         codes = codes.map(item => {
             let output = null;
             try {
-                output = eval(item.code);
+                output = eval(item?.code);
                 if (['object', 'function', 'undefined', 'null'].includes(typeof output)) output = null;
             } catch (error) {
                 this.errors.push(error);
@@ -159,4 +195,4 @@ class Rooter {
     }
 }
 
-module.exports = { UseRender, Rooter, SchemeManager, Config };
+module.exports = { UseRender, Rooter, SchemeManager, Config, ConfigKeys };

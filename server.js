@@ -109,8 +109,10 @@ class Rooter {
         this.errors = [];
     }
 
-    async render(file_name, data = {}, scheme) {
+    async render(file_name, data = {}, scheme = configStore.get(ConfigKeys.DEFAULT_SCHEME)?.value) {
         this.request.res.setHeader('Content-Type', 'text/html');
+        data = { ...data, ...(this.request?.data || {}) };
+
         let html = await this.getHtml(file_name, data, scheme);
         if (this.errors.length > 0 && !configStore.get(ConfigKeys.IGNORE_ERRORS)?.value) {
             console.error('▲ easy-viewer: '.cyan + 'Page not rendered because of errors, please first fix the errors.'.yellow);

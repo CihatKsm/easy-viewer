@@ -39,27 +39,32 @@ const ConfigKeys = {
  * UseRender: Middleware for Express.js to render HTML files.
  * 
  * @param {import('express').Request} request This is the request object.
+ * @param {import('express').Response} response This is the response object.
+ * @param {import('express').NextFunction} next This is the next function.
  */
-function UseRender(request) {
+function UseRender(request, response, next) {
+    delete response.render;
+    
     if (!request) {
-        const error = new Error('Error: Request, Response or Next is not defined.');
+        const error = new Error('Error: Request is not defined.');
         console.error('▲ easy-viewer: '.cyan + error.message.red);
         return process.exit(1);
     }
 
     const method = request.method;
     if (method !== 'GET') {
-        next();
+        request.next();
         return;
     }
 
-    const _scheme = configStore.get(ConfigKeys.DEFAULT_SCHEME)?.value;
     const _data = request?.data || {};
+    const _scheme = _data?._scheme || configStore.get(ConfigKeys.DEFAULT_SCHEME)?.value;
 
     const rooter = new Rooter(request);
+    const render = (file_name, data) => rooter.render(file_name, { ..._data, ...(data || {}) }, _scheme)
+    response.render = render;
 
-    request.renderer = (file_name, data, scheme = _scheme) => rooter.render(file_name, { ..._data, ...(data || {}) }, scheme)
-    request.next();
+    next();
 }
 
 class Config {

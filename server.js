@@ -58,7 +58,7 @@ function UseRender(request) {
 
     const rooter = new Rooter(request);
 
-    request.response.renderer = (file_name, data, scheme = _scheme) => rooter.render(file_name, { ..._data, ...(data || {}) }, scheme)
+    request.renderer = (file_name, data, scheme = _scheme) => rooter.render(file_name, { ..._data, ...(data || {}) }, scheme)
     request.next();
 }
 

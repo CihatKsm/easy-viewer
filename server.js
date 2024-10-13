@@ -39,11 +39,9 @@ const ConfigKeys = {
  * UseRender: Middleware for Express.js to render HTML files.
  * 
  * @param {import('express').Request} request This is the request object.
- * @param {import('express').Response} response This is the response object.
- * @param {import('express').NextFunction} next This is the next function.
  */
-function UseRender(request, response, next) {
-    if (!request || !response || !next) {
+function UseRender(request) {
+    if (!request) {
         const error = new Error('Error: Request, Response or Next is not defined.');
         console.error('▲ easy-viewer: '.cyan + error.message.red);
         return process.exit(1);
@@ -60,8 +58,8 @@ function UseRender(request, response, next) {
 
     const rooter = new Rooter(request);
 
-    response.renderer = (file_name, data, scheme = _scheme) => rooter.render(file_name, { ..._data, ...(data || {}) }, scheme)
-    next();
+    request.response.renderer = (file_name, data, scheme = _scheme) => rooter.render(file_name, { ..._data, ...(data || {}) }, scheme)
+    request.next();
 }
 
 class Config {
